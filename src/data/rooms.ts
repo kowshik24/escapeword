@@ -179,7 +179,7 @@ export const rooms: Room[] = [
         question: 'Activate the life support: LIFE = "OFF"\nWhat should it be to turn on?',
         answer: 'ON',
         hints: ['Opposite of off', 'Turn it on'],
-        points: 550
+        points: 500
       }
     ]
   },
