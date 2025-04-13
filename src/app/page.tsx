@@ -1,103 +1,166 @@
-import Image from "next/image";
+'use client';
+
+import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore } from '@/store/gameStore';
+import { rooms } from '@/data/rooms';
+import { GameContainer } from '@/components/game/GameContainer';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { setCurrentRoom, setGameState, gameState, score, completedRooms } = useGameStore();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleRoomSelect = (roomId: string) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (room) {
+      setCurrentRoom(room);
+      setGameState('playing');
+    }
+  };
+
+  const calculateRank = (score: number) => {
+    if (score >= 1000) return { title: 'Master Escapist', color: 'text-yellow-400' };
+    if (score >= 750) return { title: 'Expert', color: 'text-purple-400' };
+    if (score >= 500) return { title: 'Advanced', color: 'text-blue-400' };
+    if (score >= 250) return { title: 'Intermediate', color: 'text-green-400' };
+    return { title: 'Novice', color: 'text-gray-400' };
+  };
+
+  const rank = calculateRank(score);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-purple-900 to-black text-white">
+      <AnimatePresence mode="wait">
+        {gameState === 'menu' ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="container mx-auto px-4 py-16"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-12"
+            >
+              <h1 className="text-6xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                EscapeWord
+              </h1>
+              <p className="text-lg text-gray-300">Unlock the mysteries, one word at a time</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-2xl mx-auto mb-12"
+            >
+              {/* Profile Card */}
+              <div className="p-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 shadow-xl">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-3xl font-bold text-purple-300 mb-2">Player Dashboard</h2>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-lg ${rank.color}`}>{rank.title}</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-yellow-500">{score} points</span>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 rounded-full bg-purple-900/40 border border-purple-500/30">
+                    <span className="text-sm font-medium text-purple-300">Level {Math.floor(score / 100) + 1}</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-purple-900/40 border border-purple-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg font-semibold text-purple-200">Rooms Completed</span>
+                      {completedRooms.length === rooms.length && (
+                        <span className="px-2 py-1 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-full">ALL CLEAR!</span>
+                      )}
+                    </div>
+                    <p className="text-3xl font-bold text-purple-300">{completedRooms.length}/{rooms.length}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-purple-900/40 border border-purple-500/30">
+                    <h3 className="text-lg font-semibold text-purple-200 mb-2">Success Rate</h3>
+                    <div className="relative h-8 bg-purple-900/40 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                        style={{ 
+                          width: `${completedRooms.length > 0 
+                            ? Math.round((completedRooms.length / rooms.length) * 100)
+                            : 0}%` 
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-white font-bold">
+                          {completedRooms.length > 0 
+                            ? Math.round((completedRooms.length / rooms.length) * 100)
+                            : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievement Badges */}
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <h3 className="text-lg font-semibold text-purple-200 mb-4">Achievements</h3>
+                  <div className="flex gap-4">
+                    <div className={`p-3 rounded-lg ${score >= 500 ? 'bg-yellow-400/20 border-yellow-400/50' : 'bg-gray-800/50 border-gray-700'} border`}>
+                      <span className={`text-2xl ${score >= 500 ? 'text-yellow-400' : 'text-gray-600'}`}>🏆</span>
+                    </div>
+                    <div className={`p-3 rounded-lg ${completedRooms.length >= 3 ? 'bg-purple-400/20 border-purple-400/50' : 'bg-gray-800/50 border-gray-700'} border`}>
+                      <span className={`text-2xl ${completedRooms.length >= 3 ? 'text-purple-400' : 'text-gray-600'}`}>🌟</span>
+                    </div>
+                    <div className={`p-3 rounded-lg ${score >= 1000 ? 'bg-blue-400/20 border-blue-400/50' : 'bg-gray-800/50 border-gray-700'} border`}>
+                      <span className={`text-2xl ${score >= 1000 ? 'text-blue-400' : 'text-gray-600'}`}>👑</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Room Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {rooms.map((room) => (
+                <motion.div
+                  key={room.id}
+                  whileHover={{ scale: 1.03 }}
+                  className={`group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-sm border transition-all duration-300
+                    ${completedRooms.includes(room.id) 
+                      ? 'border-green-500/50 shadow-lg shadow-green-500/20' 
+                      : 'border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20'}`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-10"/>
+                  <div className="relative z-20 p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <h2 className="text-2xl font-bold group-hover:text-purple-300 transition-colors">
+                        {room.name}
+                      </h2>
+                      {completedRooms.includes(room.id) && (
+                        <span className="flex items-center gap-1 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
+                          <span className="text-green-400">✓</span>
+                          <span className="text-sm font-medium text-green-400">Completed</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-300 mb-4">{room.description}</p>
+                    <button
+                      onClick={() => handleRoomSelect(room.id)}
+                      className={`w-full px-4 py-2 rounded-lg font-medium transition-all duration-300
+                        ${completedRooms.includes(room.id)
+                          ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                          : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30'}`}
+                    >
+                      {completedRooms.includes(room.id) ? 'Play Again' : 'Start Challenge'}
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        ) : (
+          <GameContainer />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
