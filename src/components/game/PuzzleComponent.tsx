@@ -1,190 +1,223 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Puzzle } from '@/types';
-import { useSound } from '@/hooks/useSound';
+import { motion } from 'framer-motion';
 
 interface PuzzleComponentProps {
   puzzle: Puzzle;
-  onSolved: (puzzle: Puzzle) => void;
+  onSolved: () => void;
 }
 
-const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
+export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
   const [answer, setAnswer] = useState('');
-  const [currentHintIndex, setCurrentHintIndex] = useState(-1);
-  const [isWrong, setIsWrong] = useState(false);
-  const { useHint: spendHint, hints, currentRoom, reduceScore } = useGameStore();
-  
-  const successSound = useSound('/sounds/success.mp3');
-  const wrongSound = useSound('/sounds/wrong.mp3');
-  const hintSound = useSound('/sounds/hint.mp3');
+  const [showHint, setShowHint] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { hints, useHint, addScore, reduceScore, incrementWrongAttempts, activePowerUps, addSkippedPuzzle } = useGameStore();
 
-  const getPuzzleInput = () => {
-    switch (puzzle.type) {
-      case 'unscramble':
-        return (
-          <div className="space-y-4">
-            <div className="bg-black/80 p-6 rounded-lg">
-              <p className="text-xl text-white mb-2">Unscramble these letters:</p>
-              <div className="text-4xl font-mono tracking-widest text-yellow-400 text-center">
-                {puzzle.question.replace(/\(.*?\)/, '')}
-              </div>
-            </div>
-            <input
-              type="text"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="w-full p-4 text-xl border-2 border-opacity-50 rounded-lg bg-white text-slate-900 font-semibold shadow-lg placeholder:text-slate-500"
-              placeholder="Enter unscrambled word..."
-              autoFocus
-            />
-          </div>
-        );
-      
-      case 'riddle':
-        return (
-          <div className="space-y-4">
-            <div className="bg-black/80 p-6 rounded-lg">
-              <p className="text-xl text-white mb-2">Solve the riddle:</p>
-              <div className="text-2xl text-yellow-400">
-                {puzzle.question}
-              </div>
-            </div>
-            <input
-              type="text"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="w-full p-4 text-xl border-2 border-opacity-50 rounded-lg bg-white text-slate-900 font-semibold shadow-lg placeholder:text-slate-500"
-              placeholder="Enter your answer..."
-              autoFocus
-            />
-          </div>
-        );
-      
-      default:
-        return (
-          <div className="space-y-4">
-            <div className="bg-black/80 p-6 rounded-lg">
-              <p className="text-xl text-white mb-2">Current Puzzle:</p>
-              <div className="text-2xl text-yellow-400">
-                {puzzle.question}
-              </div>
-            </div>
-            <input
-              type="text"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              className="w-full p-4 text-xl border-2 border-opacity-50 rounded-lg bg-white text-slate-900 font-semibold shadow-lg placeholder:text-slate-500"
-              placeholder="Enter your answer..."
-              autoFocus
-            />
-          </div>
-        );
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (answer.toLowerCase().trim() === puzzle.answer.toLowerCase()) {
-      successSound.play({ volume: 0.8 }); // Adjust volume to 50%
-      onSolved(puzzle);
-    } else {
-      wrongSound.play({ volume: 0.8 }); // Adjust volume to 50%
-      setIsWrong(true);
-      setTimeout(() => setIsWrong(false), 1000);
-    }
-  };
-
-  const handleHint = () => {
-    if (currentHintIndex < puzzle.hints.length - 1 && hints > 0) {
-      hintSound.play();
-      spendHint();
-      reduceScore(50); // Deduct 50 points for using a hint
-      setCurrentHintIndex(prev => prev + 1);
-    }
-  };
-
+  // Re-focus input when puzzle changes
   useEffect(() => {
-    setAnswer('');
-    setCurrentHintIndex(-1);
-    setIsWrong(false);
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [puzzle.id]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setAnswer('');
+      setShowHint(false);
+      setIsSubmitting(false);
+    };
+  }, []);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!answer.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const trimmedAnswer = answer.trim().toLowerCase();
+      const correctAnswer = puzzle.answer.toLowerCase();
+
+      if (trimmedAnswer === correctAnswer) {
+        // Calculate points based on difficulty and power-ups
+        const basePoints = puzzle.points;
+        const difficultyMultiplier = 
+          puzzle.difficulty === 'hard' ? 2 :
+          puzzle.difficulty === 'medium' ? 1.5 : 1;
+
+        addScore(Math.round(basePoints * difficultyMultiplier));
+
+        // Play success sound
+        const audio = new Audio('/sounds/success.mp3');
+        await audio.play().catch(console.error);
+        
+        // Clear the answer and hint state
+        setAnswer('');
+        setShowHint(false);
+        
+        onSolved();
+      } else {
+        // Reduce score on wrong answer based on difficulty
+        const penalty = 
+          puzzle.difficulty === 'hard' ? 100 :
+          puzzle.difficulty === 'medium' ? 50 : 25;
+        
+        reduceScore(penalty);
+        incrementWrongAttempts();
+
+        // Play wrong answer sound
+        const audio = new Audio('/sounds/wrong.mp3');
+        await audio.play().catch(console.error);
+        
+        // Clear the input but keep the hint visible
+        setAnswer('');
+        inputRef.current?.focus();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleHint = async () => {
+    if (hints > 0) {
+      useHint();
+      setShowHint(true);
+      
+      // Play hint sound
+      const audio = new Audio('/sounds/hint.mp3');
+      await audio.play().catch(console.error);
+      
+      // Focus back on input after revealing hint
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleSkip = async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const audio = new Audio('/sounds/powerup.mp3');
+      await audio.play().catch(console.error);
+      
+      // Mark puzzle as skipped and award 0 points
+      addSkippedPuzzle(puzzle.id);
+      addScore(0);
+      onSolved();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Check if skip puzzle power-up is active
+  const canSkipPuzzle = activePowerUps.some(p => p.type === 'skipPuzzle');
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="fixed inset-0 flex items-center justify-center px-4"
+      className="w-full py-6"
+      role="main"
+      aria-label={`Puzzle: ${puzzle.type}`}
     >
-      <div 
-        className={`w-full max-w-2xl rounded-xl p-8 shadow-2xl backdrop-blur-md ${
-          currentRoom?.theme === 'egypt'
-            ? 'bg-amber-900/90 text-amber-100'
-            : currentRoom?.theme === 'space'
-            ? 'bg-slate-900/90 text-blue-100'
-            : 'bg-gray-900/90 text-purple-100'
-        } ${isWrong ? 'animate-shake' : ''}`}
-      >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {getPuzzleInput()}
-          
-          {/* Hints Display */}
-          <div className="space-y-3 mt-6">
-            {currentHintIndex >= 0 && puzzle.hints.slice(0, currentHintIndex + 1).map((hint, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.2 }}
-                className={`p-4 rounded-lg ${
-                  currentRoom?.theme === 'egypt'
-                    ? 'bg-yellow-900/60 text-yellow-100'
-                    : currentRoom?.theme === 'space'
-                    ? 'bg-blue-900/60 text-blue-100'
-                    : 'bg-purple-900/60 text-purple-100'
-                }`}
-              >
-                <p className="text-lg">💡 Hint {index + 1}: {hint}</p>
-              </motion.div>
-            ))}
-          </div>
+      <div className="bg-black/50 backdrop-blur p-6 rounded-lg max-w-2xl w-full mx-auto">
+        <div className="mb-4">
+          <span 
+            className={
+              puzzle.difficulty === 'easy' 
+                ? 'px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-300'
+                : puzzle.difficulty === 'medium'
+                  ? 'px-2 py-1 rounded text-xs font-medium bg-yellow-500/20 text-yellow-300'
+                  : 'px-2 py-1 rounded text-xs font-medium bg-red-500/20 text-red-300'
+            }
+            role="status"
+            aria-label={`Difficulty: ${puzzle.difficulty}`}
+          >
+            {puzzle.difficulty.toUpperCase()}
+          </span>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between gap-4 mt-8">
+        <h2 className="text-2xl font-bold mb-4" id="puzzle-question">{puzzle.question}</h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="answer" className="sr-only">Your answer</label>
+            <input
+              ref={inputRef}
+              id="answer"
+              type="text"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              className="w-full p-3 rounded bg-black/30 border border-gray-700 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              placeholder="Enter your answer..."
+              aria-labelledby="puzzle-question"
+              disabled={isSubmitting}
+              autoComplete="off"
+            />
+          </div>
+          
+          <div className="flex items-center gap-4 flex-wrap">
             <button
               type="submit"
-              className={`flex-1 px-8 py-3 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
-                currentRoom?.theme === 'egypt'
-                  ? 'bg-yellow-500 hover:bg-yellow-600 text-black'
-                  : currentRoom?.theme === 'space'
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-purple-500 hover:bg-purple-600 text-white'
-              }`}
+              disabled={isSubmitting || !answer.trim()}
+              className="px-6 py-3 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-black active:bg-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Answer
+              {isSubmitting ? 'Checking...' : 'Submit Answer'}
             </button>
-            {hints > 0 && currentHintIndex < puzzle.hints.length - 1 && (
+            
+            {hints > 0 && !showHint && (
               <button
                 type="button"
                 onClick={handleHint}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all hover:scale-105 flex items-center gap-2 ${
-                  currentRoom?.theme === 'egypt'
-                    ? 'bg-amber-700 hover:bg-amber-800 text-amber-100'
-                    : currentRoom?.theme === 'space'
-                    ? 'bg-blue-700 hover:bg-blue-800 text-blue-100'
-                    : 'bg-purple-700 hover:bg-purple-800 text-purple-100'
-                }`}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black active:bg-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={`Use hint (${hints} remaining)`}
               >
-                <span>Hint ({hints} left)</span>
-                <span className="text-sm opacity-75">(-50 points)</span>
+                Use Hint ({hints} left)
+              </button>
+            )}
+
+            {canSkipPuzzle && (
+              <button
+                type="button"
+                onClick={handleSkip}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition-colors focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black active:bg-yellow-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Skip this puzzle (0 points)"
+              >
+                Skip Puzzle (0 points)
               </button>
             )}
           </div>
         </form>
+
+        {showHint && (
+          <div 
+            className="mt-4 p-4 rounded bg-blue-500/10 border border-blue-500/20"
+            role="alert"
+          >
+            <p className="text-blue-300">💡 Hint: {puzzle.hints[0]}</p>
+          </div>
+        )}
+
+        <div 
+          className="mt-6 text-sm text-gray-400"
+          role="status"
+        >
+          Potential points: {puzzle.points} 
+          {puzzle.timeBonus ? ` (+ up to ${puzzle.timeBonus} time bonus)` : ''}
+        </div>
       </div>
     </motion.div>
   );
 };
-
-export default PuzzleComponent;
