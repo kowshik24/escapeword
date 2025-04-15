@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Puzzle } from '@/types';
 import { motion } from 'framer-motion';
@@ -13,7 +13,24 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
   const [showHint, setShowHint] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { hints, useHint, addScore, reduceScore, incrementWrongAttempts, activePowerUps, addSkippedPuzzle } = useGameStore();
+  const { hints, addScore, reduceScore, incrementWrongAttempts, activePowerUps, addSkippedPuzzle } = useGameStore();
+  
+  // Call useHint at the component level
+  const hint = useGameStore(state => state.useHint);
+
+  const handleHint = useCallback(async () => {
+    if (hints > 0) {
+      setShowHint(true);
+      hint();
+      
+      // Play hint sound
+      const audio = new Audio('/sounds/hint.mp3');
+      await audio.play().catch(console.error);
+      
+      // Focus back on input after revealing hint
+      inputRef.current?.focus();
+    }
+  }, [hints, hint]);
 
   // Re-focus input when puzzle changes
   useEffect(() => {
@@ -78,20 +95,6 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
       }
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleHint = async () => {
-    if (hints > 0) {
-      useHint();
-      setShowHint(true);
-      
-      // Play hint sound
-      const audio = new Audio('/sounds/hint.mp3');
-      await audio.play().catch(console.error);
-      
-      // Focus back on input after revealing hint
-      inputRef.current?.focus();
     }
   };
 

@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { Achievement } from '@/types';
 
 export const AchievementComponent = () => {
   const { currentRoom, achievements, unlockAchievement, timeRemaining, hints, wrongAttempts, powerUpsUsed } = useGameStore();

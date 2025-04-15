@@ -1,10 +1,12 @@
 import { useGameStore } from '@/store/gameStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useSound } from '@/hooks/useSound';
 import { useEffect, useState } from 'react';
 import { ShareIcon } from '@heroicons/react/24/outline';
 import { Leaderboard } from './Leaderboard';
+
+type ShareType = 'twitter' | 'facebook' | 'linkedin';
 
 export const CompletedScreen = () => {
   const { currentRoom, score, timeRemaining, achievements, totalTimeBonus, wrongAttempts, powerUpsUsed, setGameState, resetGame, skippedPuzzles } = useGameStore();
@@ -15,7 +17,7 @@ export const CompletedScreen = () => {
   useEffect(() => {
     // Play achievement sound
     achievementSound.play();
-    
+
     // Launch confetti
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
@@ -23,7 +25,7 @@ export const CompletedScreen = () => {
 
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
-    const interval: any = setInterval(() => {
+    const interval = setInterval(() => {
       const timeLeft = animationEnd - Date.now();
 
       if (timeLeft <= 0) {
@@ -43,8 +45,11 @@ export const CompletedScreen = () => {
       });
     }, 250);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      achievementSound.stop();
+    };
+  }, [achievementSound]);
 
   useEffect(() => {
     // Reset share status after showing feedback
@@ -55,7 +60,7 @@ export const CompletedScreen = () => {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [shareStatus]);
+  }, [shareStatus, achievementSound]);
 
   if (!currentRoom) return null;
 
@@ -77,7 +82,6 @@ export const CompletedScreen = () => {
         : '(Fully completed!)';
 
       const text = `I played ${currentRoom?.name} in EscapeWord! ${completionStatus}\n\n📊 Score: ${score} points\n⏱️ Time remaining: ${timeRemaining} seconds${achievementsText}\n\nCan you beat my score? 🎮✨`;
-      const encodedText = encodeURIComponent(text);
       
       // Try Web Share API first
       if (typeof window !== 'undefined' && 'share' in navigator) {
@@ -90,7 +94,7 @@ export const CompletedScreen = () => {
           setShareMethod('native');
           setShareStatus('success');
           return;
-        } catch (error: unknown) {
+        } catch (error) {
           if (error instanceof Error && error.name !== 'AbortError') {
             console.warn('Native sharing failed, falling back to clipboard:', error);
           } else {
@@ -128,43 +132,36 @@ export const CompletedScreen = () => {
             } else {
               throw new Error('Failed to copy text');
             }
-          } catch (err) {
-            throw new Error('Clipboard copy failed');
           } finally {
             document.body.removeChild(textArea);
           }
-        } catch (err) {
-          console.error('Clipboard error:', err);
-          throw new Error('Failed to copy to clipboard');
+        } catch {
+          setShareStatus('error');
         }
-      } else {
-        throw new Error('Sharing is not available');
       }
-    } catch (err) {
-      console.error('Error sharing:', err);
+    } catch {
       setShareStatus('error');
     }
   };
 
-  const handleSocialMediaShare = (platform: 'twitter' | 'facebook' | 'linkedin') => {
+  const handleSocialMediaShare = (platform: ShareType) => {
     const text = `I played ${currentRoom?.name} in EscapeWord! Score: ${score} points`;
-    const encodedText = encodeURIComponent(text);
-    const encodedUrl = encodeURIComponent(window.location.href);
+    const url = window.location.href;
     
-    let url = '';
+    let shareUrl = '';
     switch (platform) {
       case 'twitter':
-        url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
         break;
       case 'facebook':
-        url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
         break;
       case 'linkedin':
-        url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
         break;
     }
     
-    window.open(url, '_blank', 'width=600,height=400');
+    window.open(shareUrl, '_blank', 'width=600,height=400');
   };
 
   return (
@@ -237,7 +234,7 @@ export const CompletedScreen = () => {
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
                   <h3 className="text-green-300 font-medium">Room Fully Completed!</h3>
                   <p className="text-sm text-gray-400 mt-1">
-                    Congratulations! You've solved all puzzles in this room.
+                    Congratulations! You&apos;ve solved all puzzles in this room.
                   </p>
                 </div>
               )}

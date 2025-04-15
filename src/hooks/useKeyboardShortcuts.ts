@@ -1,15 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 
 export const useKeyboardShortcuts = () => {
   const { 
     gameState, 
     currentRoom, 
-    hints, 
-    useHint, 
+    hints,
     activePowerUps, 
     setGameState 
   } = useGameStore();
+
+  // Call useHint at the hook level
+  const hint = useGameStore(state => state.useHint);
+
+  const handleHintShortcut = useCallback(() => {
+    if (hints > 0) {
+      hint();
+    }
+  }, [hints, hint]);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -19,9 +27,7 @@ export const useKeyboardShortcuts = () => {
       // Ctrl/Cmd + H: Use hint if available
       if ((event.ctrlKey || event.metaKey) && event.key === 'h') {
         event.preventDefault();
-        if (hints > 0) {
-          useHint();
-        }
+        handleHintShortcut();
       }
 
       // Ctrl/Cmd + Esc: Return to menu
@@ -42,5 +48,5 @@ export const useKeyboardShortcuts = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState, currentRoom, hints, useHint, activePowerUps, setGameState]);
+  }, [gameState, currentRoom, handleHintShortcut, activePowerUps, setGameState]);
 };

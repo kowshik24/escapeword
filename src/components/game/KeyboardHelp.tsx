@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { KeyboardIcon } from '@heroicons/react/24/outline';
+import { CommandLineIcon } from '@heroicons/react/24/outline';
 
 export const KeyboardHelp = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +20,7 @@ export const KeyboardHelp = () => {
         className="fixed bottom-4 right-4 p-2 rounded-full bg-gray-800/50 hover:bg-gray-800/70 transition-colors z-50"
         aria-label="Show keyboard shortcuts"
       >
-        <KeyboardIcon className="w-6 h-6 text-gray-400" />
+        <CommandLineIcon className="w-6 h-6 text-gray-400" />
       </button>
 
       <AnimatePresence>

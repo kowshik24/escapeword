@@ -36,7 +36,7 @@ export const Leaderboard = ({ currentRoom }: { currentRoom?: Room }) => {
         <div className="flex gap-2">
           <select
             value={timeFrame}
-            onChange={(e) => setTimeFrame(e.target.value as any)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTimeFrame(e.target.value as 'all' | 'daily' | 'weekly')}
             className="px-3 py-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30"
           >
             <option value="all">All Time</option>
@@ -46,7 +46,7 @@ export const Leaderboard = ({ currentRoom }: { currentRoom?: Room }) => {
           {currentRoom && (
             <select
               value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as 'global' | 'room')}
               className="px-3 py-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30"
             >
               <option value="global">Global</option>
