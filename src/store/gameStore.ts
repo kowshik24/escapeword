@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Room, GameState, PowerUp, Achievement, Post, Comment } from '../types';
 
 // Sample discussions to show other users' posts
@@ -266,7 +266,24 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'escape-room-storage',
-      version: 1
+      version: 1,
+      storage: createJSONStorage(() => ({
+        getItem: (name) => {
+          if (typeof window === 'undefined') return null;
+          return JSON.parse(window.localStorage.getItem(name) || 'null');
+        },
+        setItem: (name, value) => {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(name, JSON.stringify(value));
+          }
+        },
+        removeItem: (name) => {
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(name);
+          }
+        },
+      })),
+      skipHydration: true,
     }
   )
 );
