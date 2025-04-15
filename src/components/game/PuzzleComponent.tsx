@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Puzzle } from '@/types';
@@ -9,16 +11,21 @@ interface PuzzleComponentProps {
 }
 
 export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
+  const [isClient, setIsClient] = useState(false);
   const [answer, setAnswer] = useState('');
   const [showHint, setShowHint] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { hints, addScore, reduceScore, incrementWrongAttempts, activePowerUps, addSkippedPuzzle } = useGameStore();
-  
-  // Call useHint at the component level
   const hint = useGameStore(state => state.useHint);
 
+  // Handle client-side initialization
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const handleHint = useCallback(async () => {
+    if (!isClient) return;
     if (hints > 0) {
       setShowHint(true);
       hint();
@@ -30,15 +37,16 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
       // Focus back on input after revealing hint
       inputRef.current?.focus();
     }
-  }, [hints, hint]);
+  }, [hints, hint, isClient]);
 
   // Re-focus input when puzzle changes
   useEffect(() => {
+    if (!isClient) return;
     const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
     return () => clearTimeout(timer);
-  }, [puzzle.id]);
+  }, [puzzle.id, isClient]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -51,7 +59,7 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!answer.trim() || isSubmitting) return;
+    if (!isClient || !answer.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -99,7 +107,7 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
   };
 
   const handleSkip = async () => {
-    if (isSubmitting) return;
+    if (!isClient || isSubmitting) return;
     
     setIsSubmitting(true);
     try {
@@ -115,8 +123,11 @@ export const PuzzleComponent = ({ puzzle, onSolved }: PuzzleComponentProps) => {
     }
   };
 
-  // Check if skip puzzle power-up is active
   const canSkipPuzzle = activePowerUps.some(p => p.type === 'skipPuzzle');
+
+  if (!isClient) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <motion.div

@@ -1,11 +1,20 @@
-import { useEffect } from 'react';
+'use client';
+
+import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { PowerUp } from '@/types';
 
 export const PowerUpComponent = () => {
+  const [isClient, setIsClient] = useState(false);
   const { currentRoom, activePowerUps, activatePowerUp, deactivatePowerUp } = useGameStore();
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     // Clean up expired power-ups
     const interval = setInterval(() => {
       activePowerUps.forEach(powerUp => {
@@ -16,17 +25,19 @@ export const PowerUpComponent = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activePowerUps, deactivatePowerUp]);
+  }, [activePowerUps, deactivatePowerUp, isClient]);
 
-  const handlePowerUpClick = (powerUp: PowerUp) => {
+  const handlePowerUpClick = async (powerUp: PowerUp) => {
+    if (!isClient) return;
+    
     activatePowerUp(powerUp);
     
     // Play sound effect
     const audio = new Audio('/sounds/powerup.mp3');
-    audio.play();
+    await audio.play().catch(console.error);
   };
 
-  if (!currentRoom?.availablePowerUps) return null;
+  if (!isClient || !currentRoom?.availablePowerUps) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-30">
